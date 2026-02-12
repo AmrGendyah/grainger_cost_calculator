@@ -4,10 +4,9 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Dict, Optional
 import asyncio
 import logging
-# from camoufox.async_api import AsyncCamoufox
+from camoufox.async_api import AsyncCamoufox
 from curl_cffi import requests
 import re
-from selenium_driverless import webdriver
 
 
 # Configure logging
@@ -73,19 +72,13 @@ async def req_sessions():
     return session
 
 async def get_main_cookies():
-    # Use selenium to get cookies
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # Run in headless mode
-    options.add_argument("--disable-gpu")  # Disable GPU acceleration (often needed for headless)
-    options.add_argument('--disable-dev-shm-usage')
-    res_cookies = {}
-    async with webdriver.Chrome(options=options) as driver:
-        await driver.get('https://www.grainger.com/content/bulk-order-pad',wait_load=True)
-        response_cookies = await driver.get_cookies()
-        await driver.quit()
-        for cookie in response_cookies:
-            res_cookies[cookie['name']] = cookie['value'] 
-    logging.info("✅ New Cookies Created")
+   async with AsyncCamoufox(humanize=True, headless=True, locale="en-US") as browser:
+        page = await browser.new_page()
+        await page.goto('https://www.grainger.com/content/bulk-order-pad')
+        response_cookies = await page.context.cookies()
+        await page.close()
+        res_cookies = {cookie['name']: cookie['value'] for cookie in response_cookies}
+        logging.info("✅ New Cookies Created with AsyncCamoufox")
     return res_cookies
 
 async def start_connection(session, cookies):
