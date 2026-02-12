@@ -4,3 +4,4 @@ pydantic
 camoufox
 curl-cffi
 rich
+selenium-driverless
