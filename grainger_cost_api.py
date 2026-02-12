@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Dict, Optional
 import asyncio
 import logging
-from camoufox.async_api import AsyncCamoufox
+# from camoufox.async_api import AsyncCamoufox
 from curl_cffi import requests
 import re
 from selenium_driverless import webdriver
@@ -382,4 +382,5 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
