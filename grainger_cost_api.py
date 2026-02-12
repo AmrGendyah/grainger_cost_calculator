@@ -72,7 +72,7 @@ async def req_sessions():
     return session
 
 async def get_main_cookies():
-   async with AsyncCamoufox(humanize=True, headless=True, locale="en-US") as browser:
+    async with AsyncCamoufox(humanize=True, headless=True, locale="en-US") as browser:
         page = await browser.new_page()
         await page.goto('https://www.grainger.com/content/bulk-order-pad')
         response_cookies = await page.context.cookies()
@@ -80,6 +80,7 @@ async def get_main_cookies():
         res_cookies = {cookie['name']: cookie['value'] for cookie in response_cookies}
         logging.info("✅ New Cookies Created with AsyncCamoufox")
     return res_cookies
+
 
 async def start_connection(session, cookies):
     headers = {
@@ -375,5 +376,6 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
