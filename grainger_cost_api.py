@@ -327,7 +327,7 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-@app.post("/calculate-shipping", response_model=ShippingResponse)
+@app.post("/calculate_shipping", response_model=ShippingResponse)
 async def calculate_shipping(request: ShippingRequest):
     """
     Calculate shipping costs for a Grainger order.
@@ -372,4 +372,5 @@ async def calculate_shipping(request: ShippingRequest):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
