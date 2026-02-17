@@ -274,17 +274,20 @@ async def calculate_shipping_cost(items, street_address, city, state, zipcode):
                     {
                         'shipping_method': 'Ground',
                         'cost': groundDeliveryCost,
-                        'tax': groundtax
+                        'tax': groundtax,
+                        'estimated_delivery': None
                     },
                     {
                         'shipping_method': 'Expedited',
                         'cost': ExpeditedCost,
-                        'tax': Expeditedtax
+                        'tax': Expeditedtax,
+                        'estimated_delivery': None
                     },
                     {
                         'shipping_method': 'Rush',
                         'cost': rushCost,
-                        'tax': rushtax
+                        'tax': rushtax,
+                        'estimated_delivery': None
                     }
                 ]
                 
@@ -376,6 +379,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
 
