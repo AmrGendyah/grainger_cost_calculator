@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 app = FastAPI(
     title="Grainger Shipping Cost API",
     description="API to calculate shipping costs for Grainger orders",
-    version="1.0.0"
+    version="1.2.0"
 )
 
 # Add CORS middleware
@@ -115,29 +115,30 @@ async def start_connection(session, cookies):
     return response, tokenKey, tokenValue
 
 async def signin(session):
+    # Sign in as a Guest
     headers = {
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'accept-language': 'en-US,en;q=0.9,ar;q=0.8',
-        'cache-control': 'max-age=0',
-        'content-type': 'application/x-www-form-urlencoded',
-        'dnt': '1',
-        'origin': 'https://www.grainger.com',
-        'priority': 'u=0, i',
-        'referer': 'https://www.grainger.com/myaccount/checkoutsignin',
-        'sec-ch-device-memory': '8',
-        'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-        'sec-ch-ua-arch': '"x86"',
-        'sec-ch-ua-full-version-list': '"Google Chrome";v="135.0.7049.85", "Not-A.Brand";v="8.0.0.0", "Chromium";v="135.0.7049.85"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-model': '""',
-        'sec-ch-ua-platform': '"Windows"',
-        'sec-fetch-dest': 'document',
-        'sec-fetch-mode': 'navigate',
-        'sec-fetch-site': 'same-origin',
-        'sec-fetch-user': '?1',
-        'upgrade-insecure-requests': '1',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
-    }
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'en-US,en;q=0.9,ar;q=0.8',
+            'cache-control': 'max-age=0',
+            'content-type': 'application/x-www-form-urlencoded',
+            'dnt': '1',
+            'origin': 'https://www.grainger.com',
+            'priority': 'u=0, i',
+            'referer': 'https://www.grainger.com/myaccount/checkoutsignin',
+            'sec-ch-device-memory': '8',
+            'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+            'sec-ch-ua-arch': '"x86"',
+            'sec-ch-ua-full-version-list': '"Google Chrome";v="135.0.7049.85", "Not-A.Brand";v="8.0.0.0", "Chromium";v="135.0.7049.85"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-model': '""',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'same-origin',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+        }
 
     data = {
         'countryCode': 'US',
@@ -145,11 +146,16 @@ async def signin(session):
     }
 
     response = await session.post('https://www.grainger.com/checkout/guest', headers=headers, data=data)
-    logging.info(f"✅ Sign in Status => {response.status_code}")
-    resp_cookies = response.cookies.get_dict()
-    return resp_cookies
-
+    if response.status_code == 200:
+        logging.info(f"✅ Sign in Status => {response.status_code}")
+    else:
+        logging.error(f"❌ Sign in failed with status code => {response.status_code}")
+    return response.status_code
+    
 async def add_items(session, tokenKey, tokenValue, items):
+    # add items to the cart
+    # items should be a list of dictionaries with format [{sku_1, quantity_1}, {sku_2, quantity_2},...,{sku_n, quantity_n}]
+    # For example items = [{'52VR41': 10}, {'4YCR4':7}, {'31CA27':50}]
     headers = {
         'accept': '*/*',
         'accept-language': 'en-US,en;q=0.9,ar;q=0.8',
@@ -174,11 +180,13 @@ async def add_items(session, tokenKey, tokenValue, items):
     }
 
     payload = add_items_data(items)
-    payload[tokenKey] = tokenValue
+    payload[tokenKey] = tokenValue    
     response = await session.post('https://www.grainger.com/cart/v2/addItems', headers=headers, data=payload)
-    logging.info(f"✅ add_items Status => {response.status_code}")
-    resp_cookies = response.cookies.get_dict()
-    return resp_cookies
+    if response.status_code == 200:
+        logging.info(f"✅ add_items Status => {response.status_code}")
+    else:
+        logging.error(f"❌ add_items failed with status code => {response.status_code}")
+    return response.status_code
 
 async def get_final_cost(session, street_address, city, state, zipcode):
     headers = {
@@ -256,8 +264,21 @@ async def calculate_shipping_cost(items, street_address, city, state, zipcode):
             response, tokenKey, tokenValue = await start_connection(session, main_cookies)
             
             if response.status_code == 200:
-                await add_items(session, tokenKey, tokenValue, items_dict)
-                await signin(session)
+                add_try = 1
+                while add_try <= MAX_RETRIES:
+                    add_status = await add_items(session, tokenKey, tokenValue, items_dict)
+                    if add_status == 200:
+                        break
+                    add_try += 1
+                    logging.info(f"Add items retry attempt {add_try}")
+                    
+                signin_try = 1
+                while signin_try <= MAX_RETRIES:
+                    sign_status = await signin(session)
+                    if sign_status == 200:
+                        break
+                    signin_try += 1
+                    logging.info(f"Sign in retry attempt {signin_try}")
                 
                 shipping_cost = await get_final_cost(session, street_address=street_address,
                                                     city=city, state=state, zipcode=zipcode)
@@ -379,6 +400,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
 
